@@ -1,0 +1,110 @@
+---
+title: "Dengue Watch"
+---
+
+
+```{r}
+#| label: Plot Script
+
+library(ggiraph)
+
+source("rscripts/analysis.R")
+
+set_girafe_defaults(
+  opts_sizing = opts_sizing(rescale = TRUE, width = 1),
+  opts_toolbar = opts_toolbar(
+    saveaspng = FALSE,
+    hidden = c("selection", "zoom", "misc")
+  )
+)
+```
+
+# Overview of 2026 {orientation="columns"}
+
+## Column {width="40%"}
+
+```{r, cache=TRUE}
+#| label: Map of Incident Rates
+#| fig-width: !expr 12 * 0.56
+#| fig-height: 12
+#| padding: 0px
+
+girafe(fig_1)
+```
+
+## Column {width="60%"}
+
+### Row {height="5%"}
+
+```{r}
+#| label: valuebox-1
+#| content: valuebox
+
+list(
+  title = "Total Reported Cases",
+  value = "56000+",
+  color = "warning", icon = "virus"
+)
+```
+```{r}
+#| label: valuebox-2
+#| content: valuebox
+
+list(
+  value = 1245
+)
+```
+
+### Row {height="5%"}
+
+```{r}
+#| label: valuebox-3
+#| content: valuebox
+
+list(
+  title = "Total Reported Cases",
+  value = "56000+",
+  color = "warning", icon = "virus"
+)
+```
+```{r}
+#| label: valuebox-4
+#| content: valuebox
+
+list(
+  value = 1245
+)
+```
+```{r}
+#| label: valuebox-5
+#| content: valuebox
+
+list(
+  value = 1245
+)
+```
+
+### Row {height="20%}
+
+:::{.card}
+Dengue transmission in 2026 shows clear geographic variation, with relatively higher incidence observed in several southern and south-western districts. During **January–May**, **Colombo**, **Galle** and **Gampaha** remained the districts with the highest reported dengue incident rates, although changes in the rankings of other districts suggest shifts in dengue activity compared with the same period in 2025.
+
+The difference between incident rates and case counts also highlights the importance of considering population size when interpreting district-level disease burden.
+:::
+
+### Row {height="70%"}
+
+#### Column {width="50%"}
+
+```{r, cache=TRUE}
+#| label: Top 10 Districts
+#| fig-height: 6
+
+girafe(fig_2)
+```
+
+#### Column {width="50%"}
+
+```{r}
+plot(mtcars$cyl)
+```

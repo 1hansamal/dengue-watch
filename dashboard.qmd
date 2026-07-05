@@ -1,0 +1,538 @@
+---
+title: "Dengue Watch"
+execute: 
+  cache: refresh
+---
+
+```{r}
+#| label: libraries
+
+library(knitr)
+library(crosstalk)
+
+library(ggiraph)
+library(ggplot2)
+library(dygraphs)
+library(xts)
+library(plotly)
+library(patchwork)
+
+library(data.table)
+options(datatable.week = "sequential")
+```
+
+```{r}
+#| label: ggiraph options
+
+
+set_girafe_defaults(
+  opts_sizing = opts_sizing(rescale = TRUE, width = 1),
+  opts_tooltip = opts_tooltip(
+    opacity = 1, offx = 20, offy = -10,
+    use_fill = TRUE, use_stroke = FALSE,
+    delay_mouseout = 1000
+  ),
+  opts_toolbar = opts_toolbar(
+    saveaspng = FALSE,
+    hidden = c("selection", "zoom", "misc")
+  )
+)
+```
+
+```{r}
+#| label: load data
+
+
+denguDf <- fread("data/dengue_data.csv")
+distMap <- sf::st_read("data/lka_ADM2_simplified.geojson", quiet = TRUE)
+distPop <- fread("data/district_population.csv")
+```
+
+```{r}
+#| label: claan data
+
+
+names(distMap)[[1]] <- "district"
+distMap <- distMap[c("district", "geometry")]
+distMap$district <- with(distMap, sub(" District", "", district))
+
+## ---- match district names to map
+denguDf[, district := fcase(
+  district == "Kalmune", "Ampara",
+  district == "Hambanthota", "Hambantota",
+  district == "NuwaraEliya", "Nuwara Eliya",
+  default = district
+)][, cases := sum(cases), by = .(district, start.date, end.date)]
+
+## ---- create additional columns
+denguDf[, let(
+  start.date  = as.IDate(start.date),
+  end.date    = as.IDate(end.date),
+  year        = year(start.date),
+  month       = format(start.date, "%B"),
+  daymon      = mday(start.date),
+  epiweek     = week(end.date)
+)]
+
+month_abb <-  c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+pop_lookup <- setNames(distPop$pop_000, distPop$district)
+
+sharedDengue <- SharedData$new(denguDf)
+```
+
+```{r}
+#| label: color pallets
+
+pal <- list( 
+  c(
+    "#f7f4f9", "#e7e1ef", "#D4B9DA", "#c994c7", "#df65b0",
+    "#e7298a", "#ce1256", "#980043", "#67001f"
+  )
+)
+```
+
+# Overview of 2026 {orientation="columns"}
+
+## Map {.tabset width="35%"}
+
+```{r}
+#| title: Dengue Incident by District - 2026
+#| fig-width: !expr 12 * 0.56
+#| fig-height: 12
+#| padding: 0px
+
+local({
+  df <- denguDf[year == 2026, .(cases = sum(cases)), by = district]
+  df[, incident := cases / pop_lookup[district] * 100]
+
+  map <- merge(distMap, df, by = "district")
+  map$tooltip <- with(map, sprintf("%s:\ntotal cases: %i", district, cases))
+
+    fig <- ggplot(map) +
+      geom_sf_interactive(
+        aes(fill = incident, data_id = incident, tooltip = tooltip, tootltip_color = "black"),
+        lwd = 0.05, color = "black") +
+      scale_fill_continuous(
+        name = "",
+        palette = pal[[1]],
+        breaks = seq(30, 300, 30),
+        guide = guide_legend(
+          keyheight = unit(5, units = "pt"),
+          keywidth = unit(10, units = "pt"),
+          label.position = "bottom",
+          title.position = "top",
+          nrow = 1)) +
+      labs(caption = "Incident Rates based on 2025 mid year population") +
+      theme_void() +
+      theme(
+        aspect.ratio = 12.5 / 7,
+        legend.position = c(0.65, 0.95),
+        legend.text = element_text(size = 10),
+        panel.background = element_blank(),
+        plot.caption = element_text(size = 10),
+        plot.caption.position = "panel",
+        plot.margin = margin(0, 0, 0, 0, unit = "pt"))
+
+    girafe(fig)
+  
+})
+```
+
+```{r}
+#| title: Total Reported Cases - 2026
+#| fig-width: !expr 12 * 0.56
+#| fig-height: 12
+#| padding: 0px
+
+local({
+  df <- denguDf[year == 202, .(cases = sum(cases)), by = district]
+
+  map <- merge(distMap, df, by = "district")
+  map$tooltip <- with(map, sprintf("%s:\ntotal cases: %i", district, cases))
+
+  fig <- ggplot(map) +
+    geom_sf_interactive(
+      aes(fill = cases, data_id = cases / 1000, tooltip = tooltip),
+      lwd = 0.05, color = "black") +
+    scale_fill_continuous(
+      name = "",
+      palette = pal[[1]],
+      guide = guide_legend(
+        keyheight = unit(5, units = "pt"),
+        keywidth = unit(10, units = "pt"),
+        label.position = "bottom",
+        title.position = "top",
+        nrow = 1)) +
+    labs(caption = "Incident Rates based on 2025 mid year population") +
+    theme_void() +
+    theme(
+      aspect.ratio = 12.5 / 7,
+      legend.position = c(0.65, 0.95),
+      legend.text = element_text(size = 10),
+      panel.background = element_blank(),
+      plot.caption = element_text(size = 10),
+      plot.caption.position = "panel",
+      plot.margin = margin(0, 0, 0, 0, unit = "pt"))
+
+    girafe(fig)
+  
+})
+```
+
+## Summary {width="70%"}
+
+### Value Boxes {height="20%"}
+
+```{r}
+#| content: valuebox
+
+list(
+  title = "Total Reported cases",
+  value = paste0(denguDf[year == 2026, .(sum(cases))], "+"),
+  
+  icon = "virus", color = "warning"
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Sales"
+#| icon: "cart"
+#| color: "success"
+list(
+  value = 1245
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Sales"
+#| icon: "cart"
+#| color: "success"
+list(
+  value = 1245
+)
+```
+
+### Details {height="80%"}
+
+#### 2026 in Summary {width="60%"}
+
+::: {.card-body height="30%"}
+Sri Lanka has recorded over **56,000** dengue cases in 2026, a marked increase over 2025, driven largely
+by **DENV-2**. The Western Province (**Colombo**, **Gampaha**, **Kalutara**) remains the hardest-hit region due to
+population density and mosquito breeding sites.
+:::
+
+##### Summary plots {height="70%"}
+
+###### {width="50%"}
+
+```{r}
+local({
+  df <- denguDf[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = month]
+  df[, tooltip := sprintf("Reported cases: %i", cases)]
+  
+  fig <- ggplot(df) +
+      geom_col_interactive(
+        aes(x = factor(month, month.name), y = cases, data_id = cases, tooltip = tooltip),
+        fill = "pink", color = "black", lwd = 0.3) +
+      geom_hline(yintercept = -2, lwd = 1) +
+      geom_text(aes(month, cases + cases/100 * 5, label = month))+
+      labs(title = "Monthly Reported Dengue Cases - 2026") +
+      theme_void() +
+      theme(
+        plot.title.position = "panel", 
+        text = element_text(size = 16)
+      )
+  
+  girafe(fig)
+})
+```
+
+###### {width="50%"}
+
+```{r}
+#| out-width: "100%"
+
+
+local({
+  df <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(district, year, month)]
+  df[, month_num := match(month, month.name)]
+  df[, date := as.Date(sprintf("%d-%02d-01", year, month_num))]
+
+  ## fix a stacking order so districts don't swap layers over time
+  order_lvls <- df[, .(total = sum(cases)), by = district][order(-total), district]
+  df[, district := factor(district, levels = order_lvls)]
+  setorder(df, date, district)
+
+  ## silhouette (centered) streamgraph baseline
+  df[, cum_cases   := cumsum(cases), by = date]
+  df[, total_cases := sum(cases), by = date]
+  df[, let(
+    ymax = cum_cases - total_cases / 2,
+    ymin = cum_cases - cases - total_cases / 2
+  )]
+  df[, tooltip := sprintf("%s\n%s %d: %i cases", district, month, year, cases)]
+
+  girafe({
+    ggplot(df, aes(date, group = district)) +
+      geom_ribbon_interactive(
+        aes(ymin = ymin, ymax = ymax, fill = district, data_id = district, tooltip = tooltip),
+        color = "white", lwd = 0.1
+      ) +
+      scale_fill_viridis_d(option = "turbo") +
+      labs(title = "Streamgraph of Dengue Cases by District", x = "", y = "", fill = "District") +
+      theme_minimal() +
+      theme(axis.text.y = element_blank(), panel.grid = element_blank())
+  })
+})
+```
+
+
+#### Heat map {width="40%"}
+
+```{r}
+local({
+  df <- denguDf[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = .(district, month)]
+  df[, tooltip := sprintf("Reported Cases: %i", cases)]
+  
+  fig <- ggplot(df) +
+    geom_tile_interactive(
+      aes(factor(month, month.name), y = reorder(district, cases, sum),
+          fill = cases, data_id = cases, tooltip = tooltip), color = "white") +
+    scale_fill_continuous(
+      palette = pal[[1]],
+      guide = guide_colorbar(title = "Cases" )) +
+    labs(title = "District x Month Heatmap of Dengue Cases (2026)",
+         x = "", y = "", fill = "Cases")
+  
+  girafe(fig)
+})
+```
+
+# Changes Over Time {.columns}
+
+## Time Series {.tabset}
+
+###
+
+```{r}
+local({
+  df <- denguDf[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = .(district, month)]
+
+  ## add a "Total" pseudo-month so it's selectable alongside individual months
+  total <- df[, .(cases = sum(cases)), by = district]
+  total[, month := "Total"]
+  df_all <- rbindlist(list(df, total), use.names = TRUE)
+  df_all[, month := factor(month, levels = c("Total", month.name))]
+
+  ## fix district order (by total cases) so bars don't reshuffle per selection
+  district_order <- df_all[month == "Total"][order(-cases), district]
+  df_all[, district := factor(district, levels = district_order)]
+
+  sd <- SharedData$new(df_all, key = ~month, group = "month_filter")
+
+  p <- ggplot(sd, aes(district, cases,
+                      text = sprintf("%s\n%s: %i cases", district, month, cases))) +
+    geom_col_interactive(fill = "darkred", aes(data_id = cases)) +
+    labs(title = "Dengue Cases by District (2026)", x = "", y = "Cases") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  bscols(
+    widths = c(3, 9),
+    filter_select("month_sel", "Month", sd, ~month, multiple = FALSE),
+    girafe(p)
+  )
+})
+```
+
+
+### Monthly Dengue Cases - Since 2006 {.rows}
+
+:::{.card-body}
+The monthly dengue cases show clear changes over time, with both seasonal patterns and occasional 
+large outbreaks. From **2007 to 2015**, the number of reported cases remained relatively low, with 
+only a few moderate increases. However, cases began to rise after **2016**, reaching a major peak 
+in **2017**, which recorded the highest monthly number of dengue cases.
+
+Although the number of cases decreased after the 2017 outbreak, dengue continued to occur every year
+with noticeable increases, particularly in **2019**, **2023**, and **2024**.
+Overall, the results show that dengue remains a recurring public health concern in Sri Lanka, 
+with the number of cases varying from year to year and increasing during certain seasons.
+:::
+
+```{r}
+#| out-width: "100%"
+
+local({
+  df <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  df[, let(month_num = match(month, month.name))]
+  df[, date := as.Date(sprintf("%i-%02i-01", year, month_num))]
+  df[, tooltip := sprintf("%s %i: %i cases", month, year, cases)]
+
+  
+  xts(df$cases, order.by = df$date) |>
+    dygraph() |> 
+    dyOptions(
+      drawPoints = TRUE, pointSize = 4,
+      strokeWidth = 2,
+      drawGrid = FALSE, labelsKMB = TRUE)
+})
+```
+
+### Seasonal Decomposition
+```{r}
+local({
+  df <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  df[, month_num := match(month, month.name)]
+  setorder(df, year, month_num)
+
+  ts_cases <- ts(df$cases, start = c(df$year[1], df$month_num[1]), frequency = 12)
+  decomp <- decompose(ts_cases, type = "additive")
+
+  decomp_dt <- data.table(
+    date     = as.Date(sprintf("%i-%02i-01", df$year, df$month_num)),
+    observed = as.numeric(decomp$x),
+    trend    = as.numeric(decomp$trend),
+    seasonal = as.numeric(decomp$seasonal),
+    random   = as.numeric(decomp$random)
+  )
+  decomp_long <- melt(decomp_dt, id.vars = "date", variable.name = "component", value.name = "value")
+  decomp_long[, component := factor(component, levels = c("observed", "trend", "seasonal", "random"))]
+  decomp_long$tooltip <- with(decomp_long, sprintf("%s: %.1f", component, value))
+
+  fig1 <- ggplot(decomp_long, aes(date, value)) +
+      geom_line_interactive(aes(data_id = component, tooltip = tooltip), color = "darkred") +
+      facet_wrap(~component, scales = "free_y", ncol = 1) +
+      labs(title = "Decomposition of Monthly Dengue Cases", x = "", y = "") +
+      theme_minimal() 
+  girafe({
+   fig1
+  })
+})
+```
+
+### {.rows title="Seasonal Index by Month"}
+
+#### {height="20%"}
+::: {.card-body}
+The seasonal index demonstrates a distinct monthly fluctuation in dengue cases. A seasonal index 
+exceeding **1.0** signifies months with higher-than-average dengue occurrences, while values falling 
+below **1.0** indicate lower-than-average incidence. Typically, dengue cases are above average 
+in **January, June, July, November, and December**, with **July** showing the highest seasonal 
+index at around **1.65**. In contrast, **February through May** and **August through October** 
+reflect below-average dengue activity, with **September** registering the lowest seasonal index of 
+approximately **0.65**.
+:::
+
+#### {height="80%"}
+
+##### {.tabset width="70%"}
+
+```{r}
+#| title: Seasonal Index by Month
+
+
+local({
+  idx <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)][
+    , .(avg_cases = mean(cases, na.rm = TRUE)), by = month
+  ]
+  idx[, seasonal_index := avg_cases / mean(avg_cases)][order(month)]
+  idx[, tooltip := sprintf("%s:\nindex %.2f", month, seasonal_index)]
+
+  girafe({
+    ggplot(idx, aes(factor(month, month.name), seasonal_index)) +
+      geom_col_interactive(
+        aes(data_id = seasonal_index, tooltip = tooltip),
+        fill = "darkred", color = "black", lwd = 0.3, width = 0.7
+      ) +
+      geom_hline(yintercept = 1, linetype = "dashed") +
+      geom_hline(yintercept = 0, linewidth = 1) +
+      guides(x = guide_axis(n.dodge = 2)) +
+      labs(title = "", x = "", y = "Index") +
+      theme(
+        aspect.ratio = 0.5,
+        plot.background = element_blank()
+      )
+  })
+})
+```
+
+```{r}
+#| title: Data
+
+
+local({
+  idx <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  idx <- idx[, .(avg_cases = mean(cases, na.rm = TRUE)), by = month]
+  idx[, seasonal_index := avg_cases / mean(avg_cases)]
+  setorder(idx, month)
+
+  kable(idx[, .(
+      Month = month, 
+      `Average Cases` = round(avg_cases, 1), 
+      `Seasonal Index` = round(seasonal_index, 2)
+      )])
+})
+
+```
+
+##### {width="30%"}
+::: {.card-body}
+The identified seasonal trend reveals that _dengue transmission is mainly concentrated during
+certain times of the year_, rather than being evenly distributed throughout all months. 
+The significant peak observed in **July**, along with the heightened seasonal indices in **June**, **November**, 
+and **December**, may correlate with the seasonal rainfall patterns in Sri Lanka.
+
+Increased rainfall can foster suitable breeding environments for mosquitoes by providing more stagnant water, which 
+in turn boosts vector populations and the likelihood of dengue transmission. In contrast, the lower 
+seasonal indices noted during March to May and September to October may indicate periods with less 
+conducive environmental conditions for mosquito breeding.
+:::
+
+###
+
+```{r}
+#| title: Year over Year
+
+local({
+  df <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  df[, month_num := match(month, month.name)]
+  df$tooltip <- with(df, sprintf("%s %i:\n%i cases", month, year, cases))
+
+  girafe({
+    ggplot(df, aes(factor(month, month.name), cases, group = year, color = factor(year))) +
+      geom_line() +
+      geom_point_interactive(aes(data_id = cases, tooltip = tooltip), size = 1.5) +
+      labs(title = "Year-over-Year Monthly Dengue Cases", x = "", y = "Cases", color = "Year") +
+      theme_minimal()
+  })
+})
+```
+
+```{r}
+#| title: Autocorrelation
+
+local({
+  df <- denguDf[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  df[, month_num := match(month, month.name)]
+  setorder(df, year, month_num)
+
+  ts_cases <- ts(df$cases, start = c(df$year[1], df$month_num[1]), frequency = 12)
+  acf_vals <- acf(ts_cases, plot = FALSE, lag.max = 24)
+  acf_dt <- data.table(lag = acf_vals$lag[, 1, 1], acf = acf_vals$acf[, 1, 1])
+  ci <- qnorm((1 + 0.95) / 2) / sqrt(acf_vals$n.used)
+  acf_dt$tooltip <- with(acf_dt, sprintf("lag %f:\nacf %.2f", lag, acf))
+
+  girafe({
+    ggplot(acf_dt, aes(lag, acf)) +
+      geom_col_interactive(aes(data_id = acf, tooltip = tooltip), fill = "darkred", width = 0.3) +
+      geom_hline(yintercept = c(-ci, ci), linetype = "dashed", color = "steelblue") +
+      labs(title = "Autocorrelation of Monthly Dengue Cases", x = "Lag (months)", y = "ACF") +
+      theme_minimal()
+  })
+})
+```
