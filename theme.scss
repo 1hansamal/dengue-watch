@@ -1,0 +1,53 @@
+/*-- scss:defaults --*/
+
+// Options
+
+$enable-shadows: true !important;
+$enable-gradients: true !important;
+$enable-transitions: true !important;
+$enable-reduced-motion: false !important;
+
+$spacer: 10px !default;
+
+$body-bg:                   black !default;
+
+$grid-gutter-width:           1rem !default;
+
+$border-radius:               1rem !default;
+
+$card-title-color:                  black !default;
+$card-subtitle-color:               gray !default;
+$card-border-width:                 0.5px !default;
+$card-border-color:                 null !default;
+$card-border-radius:                10px !default;
+$card-box-shadow:                   null !default;
+$card-bg:                           white !default;
+$card-img-overlay-padding:          0px !default;
+
+/*-- scss:rules --*/
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  word-wrap: break-word;
+}
+
+.girafe {display: grid;}
+
+body {
+  background-image: url("https://w.wallhaven.cc/full/w8/wallhaven-w872kq.jpg") !important
+}
+
+.quarto-dashboard #quarto-content.quarto-dashboard-content {
+  padding: 0px !important;
+}
+
+.card-body {
+  // Enable `flex-grow: 1` for decks and groups so that card blocks take up
+  // as much space as possible, ensuring footers are aligned to the bottom.
+  flex: 1 1 auto;
+  padding: var(--#{$prefix}card-spacer-y) var(--#{$prefix}card-spacer-x);
+  color: var(--#{$prefix}card-color);
+}
+
