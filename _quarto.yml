@@ -1,0 +1,13 @@
+project:
+  type: website
+  output-dir: docs
+
+format:
+  dashboard:
+    theme: [none, theme.scss]
+
+engine: knitr
+
+editor:
+  render-on-save: true
+  mode: source

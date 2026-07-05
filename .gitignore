@@ -1,0 +1,4 @@
+/.quarto/
+**/*.quarto_ipynb
+dengue*_cache
+dengue*_files
