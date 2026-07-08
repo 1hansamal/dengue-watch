@@ -2,9 +2,9 @@
 line-width = 90
 indent-width = 2
 indent-style = "space"
-line-ending = "auto"
-persistent-line-breaks = true
-assignment-style = "arrow"
+line-ending = "native"
+persistent-line-breaks = false
+assignment-style = "preserve"
 exclude = []
 default-exclude = true
 skip = []

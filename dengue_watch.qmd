@@ -21,15 +21,24 @@ set_girafe_defaults(
 
 # Overview of 2026 {orientation="columns"}
 
-## Column {width="40%"}
+## Column {.tabset width="40%"}
 
-```{r, cache=TRUE}
+```{r}
+#| title: Incident Rates - 2026
 #| label: Map of Incident Rates
 #| fig-width: !expr 12 * 0.56
 #| fig-height: 12
 #| padding: 0px
 
 girafe(fig_1)
+``` 
+
+```{r}
+#| title: Monthly & District Breakdown - 2026
+
+fig_12
+
+fig_13
 ```
 
 ## Column {width="60%"}
@@ -55,56 +64,60 @@ list(
 )
 ```
 
-### Row {height="5%"}
-
-```{r}
-#| label: valuebox-3
-#| content: valuebox
-
-list(
-  title = "Total Reported Cases",
-  value = "56000+",
-  color = "warning", icon = "virus"
-)
-```
-```{r}
-#| label: valuebox-4
-#| content: valuebox
-
-list(
-  value = 1245
-)
-```
-```{r}
-#| label: valuebox-5
-#| content: valuebox
-
-list(
-  value = 1245
-)
-```
-
 ### Row {height="20%}
 
 :::{.card}
-Dengue transmission in 2026 shows clear geographic variation, with relatively higher incidence observed in several southern and south-western districts. During **January–May**, **Colombo**, **Galle** and **Gampaha** remained the districts with the highest reported dengue incident rates, although changes in the rankings of other districts suggest shifts in dengue activity compared with the same period in 2025.
-
-The difference between incident rates and case counts also highlights the importance of considering population size when interpreting district-level disease burden.
+Dengue transmission in 2026 shows clear geographic variation, 
+with relatively higher incidence observed in several southern and south-western districts. 
+During **January–May**, **Colombo**, **Galle** and **Gampaha** remained the districts
+with the highest reported dengue incident rates, although changes in the rankings of 
+other districts suggest shifts in dengue activity compared with the same period in 2025.
 :::
 
 ### Row {height="70%"}
 
-#### Column {width="50%"}
-
-```{r, cache=TRUE}
-#| label: Top 10 Districts
-#| fig-height: 6
-
-girafe(fig_2)
+```{r}
+fig_4
 ```
 
-#### Column {width="50%"}
+# Time Series Analysis {orientation="columns"}
+
+## Column {.tabset}
+
+### Tab Row 
+
+#### {.columns}
+
+##### Column
+:::{.card-body}
+```{r}
+#| out-width: "100%"
+
+fig_55
+```
+The decomposition reveals a clear seasonal cycle in dengue cases, a generally increasing
+long-term trend, and several irregular outbreaks. While seasonal patterns remain
+consistent from year to year, large epidemic peaks—particularly around 2017—are driven
+by factors beyond normal seasonal variation, highlighting the importance of continuous
+surveillance and timely public health interventions.
+:::
+
+#####
 
 ```{r}
-plot(mtcars$cyl)
+#| out-width: "100%"
+
+fig_5
 ```
+
+:::{.card-body}
+The seasonal index indicates that dengue cases follow a clear seasonal pattern
+throughout the year rather than being evenly distributed. July has the highest
+seasonal index, showing that dengue cases are substantially higher than the annual
+monthly average during this period. Elevated indices in January, June, November,
+and December also suggest increased transmission, while March, April, September,
+and October consistently experience below-average case levels. Overall, the results
+highlight a mid-year peak with a secondary increase towards the end of the year,
+suggesting that dengue prevention and control measures should be strengthened
+before these high-risk periods.
+:::
