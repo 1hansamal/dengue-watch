@@ -132,13 +132,9 @@ fig_cumulative <- local({
   ]
   setorder(df, year, epiweek)
   df[, cum_cases := cumsum(cases), by = year]
-  df[, tooltip := sprintf("week %i (%i): %i cumulative cases", epiweek, year, cum_cases)]
 
   ggplot(df, aes(x = epiweek, y = cum_cases, color = factor(year), group = year)) +
-    geom_line(
-      aes(data_id = interaction(year, epiweek), tooltip = tooltip),
-      linewidth = 1
-    ) +
+    geom_line(linewidth = 1) +
     scale_color_manual(
       values = c("2025" = "steelblue", "2026" = "darkred"),
       name = "Year"
@@ -180,10 +176,9 @@ fig_growth_rate <- local({
   df <- data[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = epiweek]
   setorder(df, epiweek)
   df[, growth := (cases / shift(cases) - 1) * 100]
-  df[, tooltip := sprintf("week %i: %.1f%% change", epiweek, growth)]
 
   ggplot(df[!is.na(growth)], aes(x = epiweek, y = growth, fill = growth > 0)) +
-    geom_col(aes(data_id = epiweek, tooltip = tooltip)) +
+    geom_col() +
     scale_fill_manual(
       values = c("TRUE" = "darkred", "FALSE" = "steelblue"),
       guide = "none"
