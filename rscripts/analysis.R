@@ -124,6 +124,108 @@ fig_12 <- local({
     labs(title = "Monthly Total Dengue Cases - 2026", x = "Month", y = "Total Cases")
 })
 
+fig_cumulative <- local({
+  df <- data[
+    year %in% c(2025, 2026) & month %in% 1:5,
+    .(cases = sum(cases, na.rm = TRUE)),
+    by = .(year, epiweek)
+  ]
+  setorder(df, year, epiweek)
+  df[, cum_cases := cumsum(cases), by = year]
+  df[, tooltip := sprintf("week %i (%i): %i cumulative cases", epiweek, year, cum_cases)]
+
+  ggplot(df, aes(x = epiweek, y = cum_cases, color = factor(year), group = year)) +
+    geom_line(
+      aes(data_id = interaction(year, epiweek), tooltip = tooltip),
+      linewidth = 1
+    ) +
+    scale_color_manual(
+      values = c("2025" = "steelblue", "2026" = "darkred"),
+      name = "Year"
+    ) +
+    labs(
+      title = "Cumulative Dengue Cases (Jan–May)",
+      x = "Epidemiological Week",
+      y = "Cumulative Cases"
+    ) +
+    theme_minimal()
+})
+
+fig_boxplot <- local({
+  df <- data[year == 2026]
+
+  ggplot(df, aes(x = reorder(district, cases, median), y = cases)) +
+    geom_boxplot(fill = "steelblue", outlier.color = "darkred", outlier.alpha = 0.6) +
+    coord_flip() +
+    labs(
+      title = "Distribution of Weekly Cases by District - 2026",
+      x = "District",
+      y = "Weekly Cases"
+    ) +
+    theme_minimal()
+})
+
+fig_small_multiples <- local({
+  df <- data[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, epiweek)]
+
+  ggplot(df, aes(x = epiweek, y = cases)) +
+    geom_line(color = "darkred", linewidth = 0.4) +
+    facet_wrap(~year, ncol = 6) +
+    labs(title = "Weekly Case Curve by Year", x = "Epidemiological Week", y = "Cases") +
+    theme_minimal(base_size = 8) +
+    theme(strip.text = element_text(face = "bold"))
+})
+
+fig_growth_rate <- local({
+  df <- data[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = epiweek]
+  setorder(df, epiweek)
+  df[, growth := (cases / shift(cases) - 1) * 100]
+  df[, tooltip := sprintf("week %i: %.1f%% change", epiweek, growth)]
+
+  ggplot(df[!is.na(growth)], aes(x = epiweek, y = growth, fill = growth > 0)) +
+    geom_col(aes(data_id = epiweek, tooltip = tooltip)) +
+    scale_fill_manual(
+      values = c("TRUE" = "darkred", "FALSE" = "steelblue"),
+      guide = "none"
+    ) +
+    geom_hline(yintercept = 0, color = "black", linewidth = 0.3) +
+    labs(
+      title = "Week-over-Week Growth Rate - 2026",
+      x = "Epidemiological Week",
+      y = "% Change"
+    ) +
+    theme_minimal()
+})
+
+fig_district_corr <- local({
+  df <- dcast(
+    data[year > 2015],
+    start.date ~ district,
+    value.var = "cases",
+    fun = sum,
+    fill = 0
+  )
+  mat <- cor(df[, -"start.date"], use = "pairwise.complete.obs")
+
+  corr_dt <- as.data.table(as.table(mat))
+  setnames(corr_dt, c("district_x", "district_y", "correlation"))
+
+  ggplot(corr_dt, aes(x = district_x, y = district_y, fill = correlation)) +
+    geom_tile() +
+    scale_fill_viridis_c(option = "magma") +
+    labs(
+      title = "Correlation of Weekly Cases Between Districts",
+      x = NULL,
+      y = NULL,
+      fill = "Corr."
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1, size = 7),
+      axis.text.y = element_text(size = 7)
+    )
+})
+
 fig_13 <- local({
   district_totals <- data[year == 2026, .(total_cases = sum(cases)), by = district]
 
@@ -377,5 +479,5 @@ fig_6 <- local({
 
 
 leflet_map <- local({
-  df <- data[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, month)]
+  df <- data[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, district)]
 })
