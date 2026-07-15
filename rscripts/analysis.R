@@ -2,6 +2,7 @@ library(data.table)
 library(sf)
 library(ggplot2)
 library(patchwork)
+library(forecast)
 
 
 options(datatable.week = "sequential")
@@ -472,6 +473,130 @@ fig_6 <- local({
   })
 })
 
+
+# outbreak detection - epidemic threshold vs 2026 ==============================
+# baseline = mean +/- 2 SD of historical (pre-2026) cases for each epiweek,
+# a standard approach for defining an epidemic threshold in surveillance work
+fig_outbreak <- local({
+  hist_df <- data[year < 2026 & year >= 2016, .(cases = sum(cases, na.rm = TRUE)), by = .(year, epiweek)]
+
+  baseline <- hist_df[, .(
+    mean_cases = mean(cases, na.rm = TRUE),
+    sd_cases   = sd(cases, na.rm = TRUE)
+  ), by = epiweek]
+  baseline[, let(
+    threshold = mean_cases + 2 * sd_cases,
+    lower     = pmax(mean_cases - 2 * sd_cases, 0)
+  )]
+
+  current <- data[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = epiweek]
+  df <- merge(baseline, current, by = "epiweek", all.x = TRUE)
+  setorder(df, epiweek)
+  df[, status := fcase(
+    is.na(cases), "no data",
+    cases > threshold, "above threshold",
+    default = "within expected range"
+  )]
+
+  ggplot(df, aes(x = epiweek)) +
+    geom_ribbon(aes(ymin = lower, ymax = threshold), fill = "grey80", alpha = 0.6) +
+    geom_line(aes(y = mean_cases), color = "grey40", linetype = "dashed", linewidth = 0.4) +
+    geom_line(aes(y = threshold), color = "darkred", linetype = "dotted", linewidth = 0.4) +
+    geom_line(aes(y = cases), color = "black", linewidth = 0.6, na.rm = TRUE) +
+    geom_point(aes(y = cases, color = status), size = 2, na.rm = TRUE) +
+    scale_color_manual(
+      values = c(
+        "above threshold" = "darkred",
+        "within expected range" = "steelblue",
+        "no data" = "grey60"
+      ),
+      name = NULL
+    ) +
+    labs(
+      title = "Outbreak Detection: 2026 vs. Historical Epidemic Threshold",
+      subtitle = "Shaded band = expected range (mean \u00b1 2 SD, 2016\u20132025); dotted line = epidemic threshold",
+      x = "Epidemiological Week",
+      y = "Weekly Cases"
+    ) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
+})
+
+# population-adjusted incidence ranking - 2026 ==================================
+fig_incidence_rank <- local({
+  df <- data[year == 2026, .(cases = sum(cases, na.rm = TRUE)), by = district]
+  df[, incidence := (cases / population[district]) * 100000]
+  setorder(df, -incidence)
+
+  natl_incidence <- df[, sum(cases) / sum(population[district]) * 100000]
+
+  ggplot(df, aes(x = reorder(district, incidence), y = incidence)) +
+    geom_col(aes(fill = incidence > natl_incidence)) +
+    geom_hline(yintercept = natl_incidence, linetype = "dashed", color = "black", linewidth = 0.4) +
+    geom_text(aes(label = round(incidence)), hjust = -0.15, size = 3) +
+    annotate(
+      "text",
+      x = 1, y = natl_incidence,
+      label = sprintf("National avg: %.0f", natl_incidence),
+      hjust = -0.05, vjust = -0.6, size = 3, fontface = "italic"
+    ) +
+    scale_fill_manual(
+      values = c("TRUE" = "darkred", "FALSE" = "steelblue"),
+      guide = "none"
+    ) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+    coord_flip() +
+    labs(
+      title = "Population-Adjusted Dengue Incidence by District - 2026",
+      x = NULL,
+      y = "Incidence rate (per 100,000 population)"
+    ) +
+    theme_minimal()
+})
+
+# short-term forecast of weekly cases ===========================================
+fig_forecast <- local({
+  df <- data[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, start.date)]
+  setorder(df, start.date)
+
+  # unbroken weekly skeleton + linear interpolation, same approach as fig_55
+  all_weeks <- seq(from = min(df[["start.date"]]), to = max(df[["start.date"]]), by = "1 week")
+  df_complete <- df[data.table(start.date = all_weeks), on = .(start.date)]
+  df_complete[, cases_filled := approx(start.date, cases, xout = start.date)[["y"]]]
+
+  ts_cases <- ts(df_complete[["cases_filled"]], frequency = 52)
+
+  fit <- forecast::ets(ts_cases)
+  fc <- forecast::forecast(fit, h = 8)
+
+  last_date <- max(df_complete[["start.date"]])
+  future_dates <- seq(last_date + as.difftime(1, units = "weeks"), by = "1 week", length.out = 8)
+
+  fc_dt <- data.table(
+    start.date = future_dates,
+    point      = as.numeric(fc$mean),
+    lo80       = as.numeric(fc$lower[, 1]),
+    hi80       = as.numeric(fc$upper[, 1]),
+    lo95       = as.numeric(fc$lower[, 2]),
+    hi95       = as.numeric(fc$upper[, 2])
+  )
+
+  hist_plot_df <- df_complete[start.date >= last_date - as.difftime(52, units = "weeks")]
+
+  ggplot() +
+    geom_line(data = hist_plot_df, aes(x = start.date, y = cases_filled), color = "black", linewidth = 0.5) +
+    geom_ribbon(data = fc_dt, aes(x = start.date, ymin = lo95, ymax = hi95), fill = "steelblue", alpha = 0.2) +
+    geom_ribbon(data = fc_dt, aes(x = start.date, ymin = lo80, ymax = hi80), fill = "steelblue", alpha = 0.35) +
+    geom_line(data = fc_dt, aes(x = start.date, y = point), color = "darkred", linewidth = 0.6) +
+    geom_vline(xintercept = last_date, linetype = "dashed", color = "grey50", linewidth = 0.4) +
+    labs(
+      title = "8-Week Forecast of National Weekly Dengue Cases",
+      subtitle = "ETS model; shaded bands = 80% and 95% prediction intervals",
+      x = "Date",
+      y = "Weekly Cases"
+    ) +
+    theme_minimal()
+})
 
 leflet_map <- local({
   df <- data[, .(cases = sum(cases, na.rm = TRUE)), by = .(year, district)]

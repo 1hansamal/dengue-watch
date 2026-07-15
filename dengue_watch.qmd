@@ -1,5 +1,5 @@
 ---
-title:"Dengue Watch"
+title: "Dengue Watch"
 ---
 
 
@@ -38,7 +38,7 @@ girafe(fig_1)
 
 fig_12
 
-fig_13
+fig_incidence_rank
 ```
 
 ## Column {width="60%"}
@@ -66,6 +66,10 @@ list(
 
 ### Row {height="20%}
 
+#### {.columns}
+
+##### Column {width="70%"}
+
 :::{.card}
 Dengue transmission in 2026 shows clear geographic variation, 
 with relatively higher incidence observed in several southern and south-western districts. 
@@ -74,7 +78,14 @@ with the highest reported dengue incident rates, although changes in the ranking
 other districts suggest shifts in dengue activity compared with the same period in 2025.
 :::
 
+
 ### Row {.tabset height="70%"}
+
+```{r}
+#| title: Outbreak Detection
+
+fig_outbreak
+```
 
 ```{r}
 fig_4
@@ -129,9 +140,35 @@ suggesting that dengue prevention and control measures should be strengthened
 before these high-risk periods.
 :::
 
+### Row {.tabset}
+
+```{r}
+#| title: 8-Week Forecast
+
+fig_forecast
+```
+
+```{r}
+#| title: Weekly YoY Comparison
+
+fig_3
+```
+
+```{r}
+#| title: Autocorrelation
+
+fig_6
+```
+
 # District Breakdown
 
 ## {.tabset}
+
+```{r}
+#| title: Top 10 Districts (2025 vs 2026)
+
+fig_2
+```
 
 ```{r}
 fig_small_multiples
@@ -141,3 +178,16 @@ fig_small_multiples
 fig_district_corr
 ```
 
+
+# Data Sources
+
+:::{.card title="Data Sources"}
+Historical case data (pre-2026): Talagala T (2026). *denguedatahub: A Tidy Format
+Dataset of Dengue by Country*. R package version 4.1.1.
+[thiyangt.github.io/denguedatahubweb](https://thiyangt.github.io/denguedatahubweb/)
+
+2026 Dengue data: Sri Lanka Epidemiology Unit, weekly epidemiological reports.
+
+Population data: Department of Census and Statistics, Sri Lanka (2025). *Mid-year Population Estimates
+by District*. #link("http://www.statistics.gov.lk/")
+:::

@@ -13,16 +13,11 @@ $spacer: 10px !default;
 
 $body-bg:                   black !default;
 
-$grid-gutter-width:           1rem !default;
+$grid-gutter-width:           5px !default;
 
-$border-radius:               1rem !default;
+$border-radius:               5px !default;
 
-$card-title-color:                  black !default;
-$card-subtitle-color:               gray !default;
 $card-border-width:                 0.5px !default;
-$card-border-color:                 white !default;
-$card-border-radius:                10px 0px 10px 0px !default;
-$card-box-shadow:                   null !default;
 $card-bg:                           white !default;
 $card-img-overlay-padding:          0px !default;
 
@@ -36,21 +31,9 @@ $card-img-overlay-padding:          0px !default;
   word-wrap: break-word;
 }
 
-.girafe {display: grid; border: 1px dotted #ff6550;}
+.girafe {display: grid;}
 
-body {
-  background-image: url("https://w.wallhaven.cc/full/w8/wallhaven-w872kq.jpg") !important
-}
 
 .quarto-dashboard #quarto-content.quarto-dashboard-content {
   padding: 0px !important;
 }
-
-.card-body {
-  // Enable `flex-grow: 1` for decks and groups so that card blocks take up
-  // as much space as possible, ensuring footers are aligned to the bottom.
-  display: flex;
-  padding: var(--#{$prefix}card-spacer-y) var(--#{$prefix}card-spacer-x);
-  color: var(--#{$prefix}card-color);
-}
-
